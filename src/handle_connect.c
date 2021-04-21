@@ -343,8 +343,19 @@ static int will__read(struct mosquitto *context, const char *client_id, struct m
 			goto error_cleanup;
 		}
 
-		snprintf(will_topic_mount, slen, "%s%s", context->listener->mount_point, will_struct->msg.topic);
-		will_topic_mount[slen] = '\0';
+		int err;
+
+		err=parse_mount_point(context,&will_topic_mount,will_struct->msg.topic);
+
+		if (err==MOSQ_ERR_NOMEM) {
+			rc = MOSQ_ERR_NOMEM;
+			goto error_cleanup;
+		}
+
+		if (err==MOSQ_ERR_PLUGIN_DEFER) {
+			snprintf(will_topic_mount, slen, "%s%s", context->listener->mount_point, will_struct->msg.topic);
+			will_topic_mount[slen] = '\0';
+		}
 
 		mosquitto__free(will_struct->msg.topic);
 		will_struct->msg.topic = will_topic_mount;

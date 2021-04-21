@@ -158,97 +158,21 @@ int handle__subscribe(struct mosquitto *context)
 					return MOSQ_ERR_NOMEM;
 				}
 
-				if (strstr(context->listener->mount_point,"%")!=NULL) {
-					char *s,*m,*u,*i,*o;
-					int ln;
-					ln=len+1+512;
-					  
-					sub_mount=mosquitto__realloc(sub_mount,ln);
-					s=sub_mount;
-					m=context->listener->mount_point;
-					u=context->username;
-					i=context->id;
-					while (*m!=0) {
-						if (s-sub_mount==ln) {
-							mosquitto__free(sub);
-							mosquitto__free(payload);
-							return MOSQ_ERR_NOMEM;
-						}
+				int err;
 
-						if (*m=='%') {
-							m++;
-							switch (*m) {
-								case '+':
-									m++;
-									if (*m=='u') {
-										if (u) {
-											while (*u!='+' && *u!=0) {
-												u++;
-											}
-											if (*u=='+') {
-												u++;
-												while(*u) {
-													*s=*u;
-													s++; u++;
-												}
-												u=context->username;
-											}
-										}
-									} else {
-										m++; // u is the only expected character -- skip whatever came after %+ 
-									}
-									break;
-								case '-':
-									m++;
-									if (*m=='u') {
-										if (u) {
-											while (*u!='+' && *u!=0) {
-												*s=*u;	
-												s++; u++;
-											}
-										}
-										u=context->username;
-									} else {
-										m++; // u is the only expected character -- skip whatever came after %- 
-									}
-									break;
-								case 'u':
-									m++;
-									if (u) {
-										while(*u) {
-											*s=*u;
-											s++; u++;
-										}
-									}
-									break;
-								case 'i':
-									m++;
-									if (i) {
-										while(*i) {
-											*s=*i;
-											s++; i++;
-										}
-									}
-									break;					
-							}
+				err=parse_mount_point(context,&sub_mount,sub);
 
-						}
-						*s=*m;
-						s++; m++;
-					}
-					if (*(s-1)==0) 
-						s--;
-					o=sub;
-					while (*o) {
-						*s=*o;
-						s++; o++;
-					}
-					*s=0;
-				} else {
+				if (err==MOSQ_ERR_NOMEM) {
+					mosquitto__free(sub);
+					mosquitto__free(payload);
+					return MOSQ_ERR_NOMEM;
+				}
+
+				if (err==MOSQ_ERR_PLUGIN_DEFER) {
 					snprintf(sub_mount, len, "%s%s", context->listener->mount_point, sub);
 					sub_mount[len] = '\0';
-
 				}
+
 				mosquitto__free(sub);
 				sub = sub_mount;
 

@@ -860,6 +860,9 @@ void will_delay__remove(struct mosquitto *mosq);
 /* ============================================================
  * Other
  * ============================================================ */
+
+int parse_mount_point(struct mosquitto *context, char **mount_p, char *topic);
+
 #ifdef WITH_XTREPORT
 void xtreport(void);
 #endif
