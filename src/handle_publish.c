@@ -214,8 +214,103 @@ int handle__publish(struct mosquitto *context)
 			db__msg_store_free(msg);
 			return MOSQ_ERR_NOMEM;
 		}
-		snprintf(topic_mount, len, "%s%s", context->listener->mount_point, msg->topic);
-		topic_mount[len] = '\0';
+		if (strstr(context->listener->mount_point,"%")!=NULL) {
+			char *s,*m,*u,*i,*o;
+
+			int ln=len+1+512;
+			topic_mount=mosquitto__realloc(topic_mount,ln);
+
+			if(!topic_mount){
+				db__msg_store_free(msg);
+				return MOSQ_ERR_NOMEM;
+			}
+
+			s=topic_mount;
+			m=context->listener->mount_point;
+			u=context->username;
+			i=context->id;
+			while (*m!=0) {
+				if (s-topic_mount==ln) {
+					mosquitto__free(topic_mount);
+					db__msg_store_free(msg);
+					return MOSQ_ERR_NOMEM;
+				}
+					
+				if (*m=='%') {
+					m++;
+					switch (*m) {
+						case '+':
+							m++;
+							if (*m=='u') {
+								if (u) {
+									while (*u!='+' && *u!=0) {
+										u++;
+									}
+									if (*u=='+') {
+										u++;
+										while(*u) {
+											*s=*u;
+											s++; u++;
+										}
+										u=context->username;
+									}
+								}
+							} else {
+								m++; // u is the only expected character -- skip whatever came after %+ 
+							}
+							break;
+						case '-':
+							m++;
+							if (*m=='u') {
+								if (u) {
+									while (*u!='+' && *u!=0) {
+										*s=*u;	
+										s++; u++;
+									}
+								}
+								u=context->username;
+							} else {
+								m++; // u is the only expected character -- skip whatever came after %- 
+							}
+							break;
+						case 'u':
+							m++;
+							if (u) {
+								while(*u) {
+									*s=*u;
+									s++; u++;
+								}
+							}
+							break;
+						case 'i':
+							m++;
+							if (i) {
+								while(*i) {
+									*s=*i;
+									s++; i++;
+								}
+							}
+							break;					
+					}
+
+				}
+				*s=*m;
+				s++; m++;
+			}
+			if (*(s-1)==0) 
+				s--;
+			o=msg->topic;
+			while (*o) {
+				*s=*o;
+				s++; o++;
+			}
+
+			*s=0;
+		} else {
+			snprintf(topic_mount, len, "%s%s", context->listener->mount_point, msg->topic);
+			topic_mount[len] = '\0';
+		}
+
 
 		mosquitto__free(msg->topic);
 		msg->topic = topic_mount;
