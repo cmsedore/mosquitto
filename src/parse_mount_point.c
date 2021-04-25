@@ -42,17 +42,20 @@ int parse_mount_point(struct mosquitto *context, char **mount_p, char *topic)
                 m++;
                 switch (*m)
                 {
-                case '+':
+                case '$':
                     m++;
                     if (*m == 'u')
                     {
                         if (u)
                         {
-                            while (*u != '+' && *u != 0)
+			    m++;
+
+                            while (*u != '*' && *u != 0)
                             {
                                 u++;
-                            }
-                            if (*u == '+')
+			    }
+
+                            if (*u == '*')
                             {
                                 u++;
                                 while (*u)
@@ -70,13 +73,15 @@ int parse_mount_point(struct mosquitto *context, char **mount_p, char *topic)
                         m++; // u is the only expected character -- skip whatever came after %+
                     }
                     break;
-                case '-':
+                case '^':
                     m++;
                     if (*m == 'u')
                     {
+			m++;
+
                         if (u)
                         {
-                            while (*u != '+' && *u != 0)
+                            while (*u != '*' && *u != 0)
                             {
                                 *s = *u;
                                 s++;
